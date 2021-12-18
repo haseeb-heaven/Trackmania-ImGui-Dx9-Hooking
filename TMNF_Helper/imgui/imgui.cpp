@@ -168,7 +168,7 @@ CODE
  --------------------------------------
  EXHIBIT 1: USING THE EXAMPLE BINDINGS (imgui_impl_XXX.cpp files from the examples/ folder).
 
-     // Application init: create a dear imgui context, setup some options, load fonts
+     // Application initImGui: create a dear imgui context, setup some options, load fonts
      ImGui::CreateContext();
      ImGuiIO& io = ImGui::GetIO();
      // TODO: Set optional io.ConfigFlags values, e.g. 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard' to enable keyboard controls.
@@ -203,7 +203,7 @@ CODE
 
  EXHIBIT 2: IMPLEMENTING CUSTOM BINDING / CUSTOM ENGINE
 
-     // Application init: create a dear imgui context, setup some options, load fonts
+     // Application initImGui: create a dear imgui context, setup some options, load fonts
      ImGui::CreateContext();
      ImGuiIO& io = ImGui::GetIO();
      // TODO: Set optional io.ConfigFlags values, e.g. 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard' to enable keyboard controls.
@@ -2030,17 +2030,17 @@ void ImGuiTextBuffer::append(const char* str, const char* str_end)
     int len = str_end ? (int)(str_end - str) : (int)strlen(str);
 
     // Add zero-terminator the first time
-    const int write_off = (Buf.Size != 0) ? Buf.Size : 1;
+    const int write_off = (im_buf.Size != 0) ? im_buf.Size : 1;
     const int needed_sz = write_off + len;
-    if (write_off + len >= Buf.Capacity)
+    if (write_off + len >= im_buf.Capacity)
     {
-        int new_capacity = Buf.Capacity * 2;
-        Buf.reserve(needed_sz > new_capacity ? needed_sz : new_capacity);
+        int new_capacity = im_buf.Capacity * 2;
+        im_buf.reserve(needed_sz > new_capacity ? needed_sz : new_capacity);
     }
 
-    Buf.resize(needed_sz);
-    memcpy(&Buf[write_off - 1], str, (size_t)len);
-    Buf[write_off - 1 + len] = 0;
+    im_buf.resize(needed_sz);
+    memcpy(&im_buf[write_off - 1], str, (size_t)len);
+    im_buf[write_off - 1 + len] = 0;
 }
 
 void ImGuiTextBuffer::appendf(const char* fmt, ...)
@@ -2065,16 +2065,16 @@ void ImGuiTextBuffer::appendfv(const char* fmt, va_list args)
     }
 
     // Add zero-terminator the first time
-    const int write_off = (Buf.Size != 0) ? Buf.Size : 1;
+    const int write_off = (im_buf.Size != 0) ? im_buf.Size : 1;
     const int needed_sz = write_off + len;
-    if (write_off + len >= Buf.Capacity)
+    if (write_off + len >= im_buf.Capacity)
     {
-        int new_capacity = Buf.Capacity * 2;
-        Buf.reserve(needed_sz > new_capacity ? needed_sz : new_capacity);
+        int new_capacity = im_buf.Capacity * 2;
+        im_buf.reserve(needed_sz > new_capacity ? needed_sz : new_capacity);
     }
 
-    Buf.resize(needed_sz);
-    ImFormatStringV(&Buf[write_off - 1], (size_t)len + 1, fmt, args_copy);
+    im_buf.resize(needed_sz);
+    ImFormatStringV(&im_buf[write_off - 1], (size_t)len + 1, fmt, args_copy);
     va_end(args_copy);
 }
 
@@ -5195,7 +5195,7 @@ void ImGui::RenderWindowTitleBarContents(ImGuiWindow* window, const ImRect& titl
         pad_l += button_sz;
     }
 
-    // Collapse button (submitting first so it gets priority when choosing a navigation init fallback)
+    // Collapse button (submitting first so it gets priority when choosing a navigation initImGui fallback)
     if (has_collapse_button)
         if (CollapseButton(window->GetID("#COLLAPSE"), collapse_button_pos))
             window->WantCollapseToggle = true; // Defer actual collapsing to next frame as we are too far in the Begin() function
@@ -8196,11 +8196,11 @@ static void ImGui::NavUpdate()
     for (int i = 0; i < IM_ARRAYSIZE(g.IO.NavInputs); i++)
         g.IO.NavInputsDownDuration[i] = (g.IO.NavInputs[i] > 0.0f) ? (g.IO.NavInputsDownDuration[i] < 0.0f ? 0.0f : g.IO.NavInputsDownDuration[i] + g.IO.DeltaTime) : -1.0f;
 
-    // Process navigation init request (select first/default focus)
-    // In very rare cases g.NavWindow may be null (e.g. clearing focus after requesting an init request, which does happen when releasing Alt while clicking on void)
+    // Process navigation initImGui request (select first/default focus)
+    // In very rare cases g.NavWindow may be null (e.g. clearing focus after requesting an initImGui request, which does happen when releasing Alt while clicking on void)
     if (g.NavInitResultId != 0 && (!g.NavDisableHighlight || g.NavInitRequestFromMove) && g.NavWindow)
     {
-        // Apply result from previous navigation init request (will typically select the first item, unless SetItemDefaultFocus() has been called)
+        // Apply result from previous navigation initImGui request (will typically select the first item, unless SetItemDefaultFocus() has been called)
         //IMGUI_DEBUG_LOG("[Nav] Apply NavInitRequest result: 0x%08X Layer %d in \"%s\"\n", g.NavInitResultId, g.NavLayer, g.NavWindow->Name);
         if (g.NavInitRequestFromMove)
             SetNavIDWithRectRel(g.NavInitResultId, g.NavLayer, g.NavInitResultRectRel);
@@ -9100,7 +9100,7 @@ void ImGui::LogText(const char* fmt, ...)
     va_start(args, fmt);
     if (g.LogFile)
     {
-        g.LogBuffer.Buf.resize(0);
+        g.LogBuffer.im_buf.resize(0);
         g.LogBuffer.appendfv(fmt, args);
         ImFileWrite(g.LogBuffer.c_str(), sizeof(char), (ImU64)g.LogBuffer.size(), g.LogFile);
     }
@@ -9450,8 +9450,8 @@ const char* ImGui::SaveIniSettingsToMemory(size_t* out_size)
 {
     ImGuiContext& g = *GImGui;
     g.SettingsDirtyTimer = 0.0f;
-    g.SettingsIniData.Buf.resize(0);
-    g.SettingsIniData.Buf.push_back(0);
+    g.SettingsIniData.im_buf.resize(0);
+    g.SettingsIniData.im_buf.push_back(0);
     for (int handler_n = 0; handler_n < g.SettingsHandlers.Size; handler_n++)
     {
         ImGuiSettingsHandler* handler = &g.SettingsHandlers[handler_n];

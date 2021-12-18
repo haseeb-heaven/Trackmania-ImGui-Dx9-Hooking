@@ -4,10 +4,10 @@
 namespace TrackManiaTM {
 	class ImGuiLogger
 	{
-		ImGuiTextBuffer  Buf;
-		ImGuiTextFilter  Filter;
-		ImVector<int>    LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
-		bool AutoScroll;  // Keep scrolling if already at the bottom.
+		ImGuiTextBuffer  im_buf;
+		ImGuiTextFilter  im_filter;
+		ImVector<int>    im_lineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
+		bool im_auto_scroll;  // Keep scrolling if already at the bottom.
 	public:
 		ImGuiLogger();
 		~ImGuiLogger() = default;

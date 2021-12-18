@@ -29,8 +29,8 @@ BOOL WINAPI  DllMain(HMODULE hmod, DWORD reason, PVOID)
 					LOG_IMGUI("DbgHelper initialized.\n");
 #endif//USE_STACKTRACE_LIB 
 
+					//Main Loop with DX9 and IMGui.
 					ImGuiMainLoop();
-
 
 #ifdef  USE_MINHOOK_LIB
 					hook_instance.reset();

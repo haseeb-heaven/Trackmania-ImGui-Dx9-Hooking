@@ -2843,8 +2843,8 @@ bool ImGui::TempInputTextScalar(const ImRect& bb, ImGuiID id, const char* label,
 
     // On the first frame, g.TempInputTextId == 0, then on subsequent frames it becomes == id.
     // We clear ActiveID on the first frame to allow the InputText() taking it back.
-    const bool init = (g.TempInputTextId != id);
-    if (init)
+    const bool initImGui = (g.TempInputTextId != id);
+    if (initImGui)
         ClearActiveID();
 
     char fmt_buf[32];
@@ -2857,7 +2857,7 @@ bool ImGui::TempInputTextScalar(const ImRect& bb, ImGuiID id, const char* label,
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_NoMarkEdited;
     flags |= ((data_type == ImGuiDataType_Float || data_type == ImGuiDataType_Double) ? ImGuiInputTextFlags_CharsScientific : ImGuiInputTextFlags_CharsDecimal);
     bool value_changed = InputTextEx(label, NULL, data_buf, IM_ARRAYSIZE(data_buf), bb.GetSize(), flags);
-    if (init)
+    if (initImGui)
     {
         // First frame we started displaying the InputText widget, we expect it to take the active id.
         IM_ASSERT(g.ActiveId == id);
@@ -3270,8 +3270,8 @@ ImGuiInputTextCallbackData::ImGuiInputTextCallbackData()
 void ImGuiInputTextCallbackData::DeleteChars(int pos, int bytes_count)
 {
     IM_ASSERT(pos + bytes_count <= BufTextLen);
-    char* dst = Buf + pos;
-    const char* src = Buf + pos + bytes_count;
+    char* dst = im_buf + pos;
+    const char* src = im_buf + pos + bytes_count;
     while (char c = *src++)
         *dst++ = c;
     *dst = '\0';
@@ -3298,17 +3298,17 @@ void ImGuiInputTextCallbackData::InsertChars(int pos, const char* new_text, cons
         ImGuiContext& g = *GImGui;
         ImGuiInputTextState* edit_state = &g.InputTextState;
         IM_ASSERT(edit_state->ID != 0 && g.ActiveId == edit_state->ID);
-        IM_ASSERT(Buf == edit_state->TextA.Data);
+        IM_ASSERT(im_buf == edit_state->TextA.Data);
         int new_buf_size = BufTextLen + ImClamp(new_text_len * 4, 32, ImMax(256, new_text_len)) + 1;
         edit_state->TextA.reserve(new_buf_size + 1);
-        Buf = edit_state->TextA.Data;
+        im_buf = edit_state->TextA.Data;
         BufSize = edit_state->BufCapacityA = new_buf_size;
     }
 
     if (BufTextLen != pos)
-        memmove(Buf + pos + new_text_len, Buf + pos, (size_t)(BufTextLen - pos));
-    memcpy(Buf + pos, new_text, (size_t)new_text_len * sizeof(char));
-    Buf[BufTextLen + new_text_len] = '\0';
+        memmove(im_buf + pos + new_text_len, im_buf + pos, (size_t)(BufTextLen - pos));
+    memcpy(im_buf + pos, new_text, (size_t)new_text_len * sizeof(char));
+    im_buf[BufTextLen + new_text_len] = '\0';
 
     if (CursorPos >= pos)
         CursorPos += new_text_len;
@@ -3322,7 +3322,7 @@ static bool InputTextFilterCharacter(unsigned int* p_char, ImGuiInputTextFlags f
 {
     unsigned int c = *p_char;
 
-    // Filter non-printable (NB: isprint is unreliable! see #2467)
+    // im_filter non-printable (NB: isprint is unreliable! see #2467)
     if (c < 0x20)
     {
         bool pass = false;
@@ -3336,11 +3336,11 @@ static bool InputTextFilterCharacter(unsigned int* p_char, ImGuiInputTextFlags f
     if (c == 127)
         return false;
 
-    // Filter private Unicode range. GLFW on OSX seems to send private characters for special keys like arrow keys (FIXME)
+    // im_filter private Unicode range. GLFW on OSX seems to send private characters for special keys like arrow keys (FIXME)
     if (c >= 0xE000 && c <= 0xF8FF)
         return false;
 
-    // Filter Unicode ranges we are not handling in this build.
+    // im_filter Unicode ranges we are not handling in this build.
     if (c > IM_UNICODE_CODEPOINT_MAX)
         return false;
 
@@ -3757,7 +3757,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
         {
             if (const char* clipboard = GetClipboardText())
             {
-                // Filter pasted buffer
+                // im_filter pasted buffer
                 const int clipboard_len = (int)strlen(clipboard);
                 ImWchar* clipboard_filtered = (ImWchar*)IM_ALLOC((clipboard_len+1) * sizeof(ImWchar));
                 int clipboard_filtered_len = 0;
@@ -3852,7 +3852,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                     callback_data.UserData = callback_user_data;
 
                     callback_data.EventKey = event_key;
-                    callback_data.Buf = state->TextA.Data;
+                    callback_data.im_buf = state->TextA.Data;
                     callback_data.BufTextLen = state->CurLenA;
                     callback_data.BufSize = state->BufCapacityA;
                     callback_data.BufDirty = false;
@@ -3867,18 +3867,18 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                     callback(&callback_data);
 
                     // Read back what user may have modified
-                    IM_ASSERT(callback_data.Buf == state->TextA.Data);  // Invalid to modify those fields
+                    IM_ASSERT(callback_data.im_buf == state->TextA.Data);  // Invalid to modify those fields
                     IM_ASSERT(callback_data.BufSize == state->BufCapacityA);
                     IM_ASSERT(callback_data.Flags == flags);
-                    if (callback_data.CursorPos != utf8_cursor_pos)            { state->Stb.cursor = ImTextCountCharsFromUtf8(callback_data.Buf, callback_data.Buf + callback_data.CursorPos); state->CursorFollow = true; }
-                    if (callback_data.SelectionStart != utf8_selection_start)  { state->Stb.select_start = ImTextCountCharsFromUtf8(callback_data.Buf, callback_data.Buf + callback_data.SelectionStart); }
-                    if (callback_data.SelectionEnd != utf8_selection_end)      { state->Stb.select_end = ImTextCountCharsFromUtf8(callback_data.Buf, callback_data.Buf + callback_data.SelectionEnd); }
+                    if (callback_data.CursorPos != utf8_cursor_pos)            { state->Stb.cursor = ImTextCountCharsFromUtf8(callback_data.im_buf, callback_data.im_buf + callback_data.CursorPos); state->CursorFollow = true; }
+                    if (callback_data.SelectionStart != utf8_selection_start)  { state->Stb.select_start = ImTextCountCharsFromUtf8(callback_data.im_buf, callback_data.im_buf + callback_data.SelectionStart); }
+                    if (callback_data.SelectionEnd != utf8_selection_end)      { state->Stb.select_end = ImTextCountCharsFromUtf8(callback_data.im_buf, callback_data.im_buf + callback_data.SelectionEnd); }
                     if (callback_data.BufDirty)
                     {
-                        IM_ASSERT(callback_data.BufTextLen == (int)strlen(callback_data.Buf)); // You need to maintain BufTextLen if you change the text!
+                        IM_ASSERT(callback_data.BufTextLen == (int)strlen(callback_data.im_buf)); // You need to maintain BufTextLen if you change the text!
                         if (callback_data.BufTextLen > backup_current_text_length && is_resizable)
                             state->TextW.resize(state->TextW.Size + (callback_data.BufTextLen - backup_current_text_length));
-                        state->CurLenW = ImTextStrFromUtf8(state->TextW.Data, state->TextW.Size, callback_data.Buf, NULL);
+                        state->CurLenW = ImTextStrFromUtf8(state->TextW.Data, state->TextW.Size, callback_data.im_buf, NULL);
                         state->CurLenA = callback_data.BufTextLen;  // Assume correct length and valid UTF-8 from user, saves us an extra strlen()
                         state->CursorAnimReset();
                     }
@@ -3902,12 +3902,12 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                 ImGuiInputTextCallbackData callback_data;
                 callback_data.EventFlag = ImGuiInputTextFlags_CallbackResize;
                 callback_data.Flags = flags;
-                callback_data.Buf = buf;
+                callback_data.im_buf = buf;
                 callback_data.BufTextLen = apply_new_text_length;
                 callback_data.BufSize = ImMax(buf_size, apply_new_text_length + 1);
                 callback_data.UserData = callback_user_data;
                 callback(&callback_data);
-                buf = callback_data.Buf;
+                buf = callback_data.im_buf;
                 buf_size = callback_data.BufSize;
                 apply_new_text_length = ImMin(callback_data.BufTextLen, buf_size - 1);
                 IM_ASSERT(apply_new_text_length <= buf_size);
@@ -6664,7 +6664,7 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
 
     // Clear name buffers
     if ((tab_bar->Flags & ImGuiTabBarFlags_DockNode) == 0)
-        tab_bar->TabsNames.Buf.resize(0);
+        tab_bar->TabsNames.im_buf.resize(0);
 }
 
 // Dockables uses Name/ID in the global namespace. Non-dockable items use the ID stack.

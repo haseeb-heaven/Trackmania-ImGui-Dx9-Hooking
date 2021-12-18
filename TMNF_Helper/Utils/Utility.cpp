@@ -231,7 +231,7 @@ bool Utility::RemoveFile(const string& file_name) {
 	return status;
 }
 
-bool Utility::WriteMemory(LPVOID address,binary_t& v_bytes)
+bool Utility::WriteMemory(LPVOID address, binary_t& v_bytes)
 {
 	if (address == NULL || v_bytes.size() == 0) {
 		GT_ShowError("Error occurred while writing data to memory.");
@@ -249,9 +249,9 @@ bool Utility::WriteMemory(LPVOID address,binary_t& v_bytes)
 };
 
 bool Utility::StrCaseCompare(const string& a, const string& b) {
-	return std::equal(a.begin(), a.end(), b.begin(), b.end(), 
-		[](char a, char b) {return tolower(a) == tolower(b); 
-	});
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+		[](char a, char b) {return tolower(a) == tolower(b);
+		});
 }
 
 size_t Utility::Find(string& data, string& search, size_t pos)
@@ -263,9 +263,9 @@ size_t Utility::Find(string& data, string& search, size_t pos)
 
 bool Utility::IsAsciiStr(const string& s)
 {
-    return std::all_of(s.begin(), s.end(), [](unsigned char c) { 
-        return c >= 0x20 && c <= 0x7F; 
-    });
+	return std::all_of(s.begin(), s.end(), [](unsigned char c) {
+		return c >= 0x20 && c <= 0x7F;
+		});
 }
 
 void Utility::Tokenize(string& str_in, char delim, vector<string>& vec_out) {
@@ -304,6 +304,24 @@ std::string Utility::Trim(const std::string& str, const std::string& whitespace)
 	const auto strRange = strEnd - strBegin + 1;
 
 	return str.substr(strBegin, strRange);
+}
+
+std::string Utility::Slice(const std::string& str, size_t start_pos, size_t end_pos) {
+	std::string sub_str;
+	if (start_pos < 0 || start_pos < str.length() || end_pos < 0 || end_pos > str.length()) return sub_str;
+	sub_str = str.substr(start_pos, (end_pos - start_pos));
+	return sub_str;
+}
+
+std::string Utility::Slice(const std::string& str, std::string& start_str, std::string& end_str) {
+	std::string sub_str;
+	if (IsStringEmpty(str) || IsStringEmpty(start_str) || IsStringEmpty(end_str)) return sub_str;
+	auto start_pos = str.find(start_str);
+	if(start_pos == std::string::npos) return sub_str;
+	auto start_pos_len = (start_pos + start_str.length());
+	auto end_pos = str.find(end_str, start_pos + 1);
+	sub_str = str.substr(start_pos + start_str.length(), (end_pos - start_pos_len));
+	return sub_str;
 }
 
 string Utility::GetAppdataPath() {

@@ -364,23 +364,23 @@ typedef int ImPoolIdx;
 template<typename T>
 struct IMGUI_API ImPool
 {
-    ImVector<T>     Buf;        // Contiguous data
+    ImVector<T>     im_buf;        // Contiguous data
     ImGuiStorage    Map;        // ID->Index
     ImPoolIdx       FreeIdx;    // Next free idx to use
 
     ImPool()    { FreeIdx = 0; }
     ~ImPool()   { Clear(); }
-    T*          GetByKey(ImGuiID key)               { int idx = Map.GetInt(key, -1); return (idx != -1) ? &Buf[idx] : NULL; }
-    T*          GetByIndex(ImPoolIdx n)             { return &Buf[n]; }
-    ImPoolIdx   GetIndex(const T* p) const          { IM_ASSERT(p >= Buf.Data && p < Buf.Data + Buf.Size); return (ImPoolIdx)(p - Buf.Data); }
-    T*          GetOrAddByKey(ImGuiID key)          { int* p_idx = Map.GetIntRef(key, -1); if (*p_idx != -1) return &Buf[*p_idx]; *p_idx = FreeIdx; return Add(); }
-    bool        Contains(const T* p) const          { return (p >= Buf.Data && p < Buf.Data + Buf.Size); }
-    void        Clear()                             { for (int n = 0; n < Map.Data.Size; n++) { int idx = Map.Data[n].val_i; if (idx != -1) Buf[idx].~T(); } Map.Clear(); Buf.clear(); FreeIdx = 0; }
-    T*          Add()                               { int idx = FreeIdx; if (idx == Buf.Size) { Buf.resize(Buf.Size + 1); FreeIdx++; } else { FreeIdx = *(int*)&Buf[idx]; } IM_PLACEMENT_NEW(&Buf[idx]) T(); return &Buf[idx]; }
+    T*          GetByKey(ImGuiID key)               { int idx = Map.GetInt(key, -1); return (idx != -1) ? &im_buf[idx] : NULL; }
+    T*          GetByIndex(ImPoolIdx n)             { return &im_buf[n]; }
+    ImPoolIdx   GetIndex(const T* p) const          { IM_ASSERT(p >= im_buf.Data && p < im_buf.Data + im_buf.Size); return (ImPoolIdx)(p - im_buf.Data); }
+    T*          GetOrAddByKey(ImGuiID key)          { int* p_idx = Map.GetIntRef(key, -1); if (*p_idx != -1) return &im_buf[*p_idx]; *p_idx = FreeIdx; return Add(); }
+    bool        Contains(const T* p) const          { return (p >= im_buf.Data && p < im_buf.Data + im_buf.Size); }
+    void        Clear()                             { for (int n = 0; n < Map.Data.Size; n++) { int idx = Map.Data[n].val_i; if (idx != -1) im_buf[idx].~T(); } Map.Clear(); im_buf.clear(); FreeIdx = 0; }
+    T*          Add()                               { int idx = FreeIdx; if (idx == im_buf.Size) { im_buf.resize(im_buf.Size + 1); FreeIdx++; } else { FreeIdx = *(int*)&im_buf[idx]; } IM_PLACEMENT_NEW(&im_buf[idx]) T(); return &im_buf[idx]; }
     void        Remove(ImGuiID key, const T* p)     { Remove(key, GetIndex(p)); }
-    void        Remove(ImGuiID key, ImPoolIdx idx)  { Buf[idx].~T(); *(int*)&Buf[idx] = FreeIdx; FreeIdx = idx; Map.SetInt(key, -1); }
-    void        Reserve(int capacity)               { Buf.reserve(capacity); Map.Data.reserve(capacity); }
-    int         GetSize() const                     { return Buf.Size; }
+    void        Remove(ImGuiID key, ImPoolIdx idx)  { im_buf[idx].~T(); *(int*)&im_buf[idx] = FreeIdx; FreeIdx = idx; Map.SetInt(key, -1); }
+    void        Reserve(int capacity)               { im_buf.reserve(capacity); Map.Data.reserve(capacity); }
+    int         GetSize() const                     { return im_buf.Size; }
 };
 
 // Helper: ImChunkStream<>
@@ -391,18 +391,18 @@ struct IMGUI_API ImPool
 template<typename T>
 struct IMGUI_API ImChunkStream
 {
-    ImVector<char>  Buf;
+    ImVector<char>  im_buf;
 
-    void    clear()                     { Buf.clear(); }
-    bool    empty() const               { return Buf.Size == 0; }
-    int     size() const                { return Buf.Size; }
-    T*      alloc_chunk(size_t sz)      { size_t HDR_SZ = 4; sz = ((HDR_SZ + sz) + 3u) & ~3u; int off = Buf.Size; Buf.resize(off + (int)sz); ((int*)(void*)(Buf.Data + off))[0] = (int)sz; return (T*)(void*)(Buf.Data + off + (int)HDR_SZ); }
-    T*      begin()                     { size_t HDR_SZ = 4; if (!Buf.Data) return NULL; return (T*)(void*)(Buf.Data + HDR_SZ); }
+    void    clear()                     { im_buf.clear(); }
+    bool    empty() const               { return im_buf.Size == 0; }
+    int     size() const                { return im_buf.Size; }
+    T*      alloc_chunk(size_t sz)      { size_t HDR_SZ = 4; sz = ((HDR_SZ + sz) + 3u) & ~3u; int off = im_buf.Size; im_buf.resize(off + (int)sz); ((int*)(void*)(im_buf.Data + off))[0] = (int)sz; return (T*)(void*)(im_buf.Data + off + (int)HDR_SZ); }
+    T*      begin()                     { size_t HDR_SZ = 4; if (!im_buf.Data) return NULL; return (T*)(void*)(im_buf.Data + HDR_SZ); }
     T*      next_chunk(T* p)            { size_t HDR_SZ = 4; IM_ASSERT(p >= begin() && p < end()); p = (T*)(void*)((char*)(void*)p + chunk_size(p)); if (p == (T*)(void*)((char*)end() + HDR_SZ)) return (T*)0; IM_ASSERT(p < end()); return p; }
     int     chunk_size(const T* p)      { return ((const int*)p)[-1]; }
-    T*      end()                       { return (T*)(void*)(Buf.Data + Buf.Size); }
-    int     offset_from_ptr(const T* p) { IM_ASSERT(p >= begin() && p < end()); const ptrdiff_t off = (const char*)p - Buf.Data; return (int)off; }
-    T*      ptr_from_offset(int off)    { IM_ASSERT(off >= 4 && off < Buf.Size); return (T*)(void*)(Buf.Data + off); }
+    T*      end()                       { return (T*)(void*)(im_buf.Data + im_buf.Size); }
+    int     offset_from_ptr(const T* p) { IM_ASSERT(p >= begin() && p < end()); const ptrdiff_t off = (const char*)p - im_buf.Data; return (int)off; }
+    T*      ptr_from_offset(int off)    { IM_ASSERT(off >= 4 && off < im_buf.Size); return (T*)(void*)(im_buf.Data + off); }
 };
 
 //-----------------------------------------------------------------------------
@@ -1563,8 +1563,8 @@ struct ImGuiTabBar
     int                 GetTabOrder(const ImGuiTabItem* tab) const  { return Tabs.index_from_ptr(tab); }
     const char*         GetTabName(const ImGuiTabItem* tab) const
     {
-        IM_ASSERT(tab->NameOffset != -1 && tab->NameOffset < TabsNames.Buf.Size);
-        return TabsNames.Buf.Data + tab->NameOffset;
+        IM_ASSERT(tab->NameOffset != -1 && tab->NameOffset < TabsNames.im_buf.Size);
+        return TabsNames.im_buf.Data + tab->NameOffset;
     }
 };
 

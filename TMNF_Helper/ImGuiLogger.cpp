@@ -3,27 +3,27 @@ using namespace TrackManiaTM;
 
 ImGuiLogger::ImGuiLogger()
 {
-	AutoScroll = true;
+	im_auto_scroll = true;
 	Clear();
 }
 
 void ImGuiLogger::Clear()
 {
-	Buf.clear();
-	LineOffsets.clear();
-	LineOffsets.push_back(0);
+	im_buf.clear();
+	im_lineOffsets.clear();
+	im_lineOffsets.push_back(0);
 }
 
 void ImGuiLogger::AddLog(const char* fmt, ...) IM_FMTARGS(2)
 {
-	int old_size = Buf.size();
+	int old_size = im_buf.size();
 	va_list args;
 	va_start(args, fmt);
-	Buf.appendfv(fmt, args);
+	im_buf.appendfv(fmt, args);
 	va_end(args);
-	for (int new_size = Buf.size(); old_size < new_size; old_size++)
-		if (Buf[old_size] == '\n')
-			LineOffsets.push_back(old_size + 1);
+	for (int new_size = im_buf.size(); old_size < new_size; old_size++)
+		if (im_buf[old_size] == '\n')
+			im_lineOffsets.push_back(old_size + 1);
 }
 
 void ImGuiLogger::Draw(const char* title, bool* p_open)
@@ -37,7 +37,7 @@ void ImGuiLogger::Draw(const char* title, bool* p_open)
 	// Options menu
 	if (ImGui::BeginPopup("Options"))
 	{
-		ImGui::Checkbox("Auto-scroll", &AutoScroll);
+		ImGui::Checkbox("Auto-scroll", &im_auto_scroll);
 		ImGui::EndPopup();
 	}
 
@@ -49,7 +49,7 @@ void ImGuiLogger::Draw(const char* title, bool* p_open)
 	ImGui::SameLine();
 	bool copy = ImGui::Button("Copy");
 	ImGui::SameLine();
-	Filter.Draw("Filter", -100.0f);
+	im_filter.Draw("Filter", -100.0f);
 
 	ImGui::Separator();
 	ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -60,28 +60,28 @@ void ImGuiLogger::Draw(const char* title, bool* p_open)
 		ImGui::LogToClipboard();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-	const char* buf = Buf.begin();
-	const char* buf_end = Buf.end();
-	if (Filter.IsActive())
+	const char* buf = im_buf.begin();
+	const char* buf_end = im_buf.end();
+	if (im_filter.IsActive())
 	{
-		for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
+		for (int line_no = 0; line_no < im_lineOffsets.Size; line_no++)
 		{
-			const char* line_start = buf + LineOffsets[line_no];
-			const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
-			if (Filter.PassFilter(line_start, line_end))
+			const char* line_start = buf + im_lineOffsets[line_no];
+			const char* line_end = (line_no + 1 < im_lineOffsets.Size) ? (buf + im_lineOffsets[line_no + 1] - 1) : buf_end;
+			if (im_filter.PassFilter(line_start, line_end))
 				ImGui::TextUnformatted(line_start, line_end);
 		}
 	}
 	else
 	{
 		ImGuiListClipper clipper;
-		clipper.Begin(LineOffsets.Size);
+		clipper.Begin(im_lineOffsets.Size);
 		while (clipper.Step())
 		{
 			for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
 			{
-				const char* line_start = buf + LineOffsets[line_no];
-				const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+				const char* line_start = buf + im_lineOffsets[line_no];
+				const char* line_end = (line_no + 1 < im_lineOffsets.Size) ? (buf + im_lineOffsets[line_no + 1] - 1) : buf_end;
 				ImGui::TextUnformatted(line_start, line_end);
 			}
 		}
@@ -89,7 +89,7 @@ void ImGuiLogger::Draw(const char* title, bool* p_open)
 	}
 	ImGui::PopStyleVar();
 
-	if (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+	if (im_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 		ImGui::SetScrollHereY(1.0f);
 
 	ImGui::EndChild();

@@ -775,7 +775,7 @@ enum ImGuiInputTextFlags_
     ImGuiInputTextFlags_CharsDecimal        = 1 << 0,   // Allow 0123456789.+-*/
     ImGuiInputTextFlags_CharsHexadecimal    = 1 << 1,   // Allow 0123456789ABCDEFabcdef
     ImGuiInputTextFlags_CharsUppercase      = 1 << 2,   // Turn a..z into A..Z
-    ImGuiInputTextFlags_CharsNoBlank        = 1 << 3,   // Filter out spaces, tabs
+    ImGuiInputTextFlags_CharsNoBlank        = 1 << 3,   // im_filter out spaces, tabs
     ImGuiInputTextFlags_AutoSelectAll       = 1 << 4,   // Select entire text when first taking mouse focus
     ImGuiInputTextFlags_EnterReturnsTrue    = 1 << 5,   // Return 'true' when Enter is pressed (as opposed to every time the value was modified). Consider looking at the IsItemDeactivatedAfterEdit() function.
     ImGuiInputTextFlags_CallbackCompletion  = 1 << 6,   // Callback on pressing TAB (for completion handling)
@@ -1511,13 +1511,13 @@ struct ImGuiInputTextCallbackData
 
     // Arguments for the different callback events
     // - To modify the text buffer in a callback, prefer using the InsertChars() / DeleteChars() function. InsertChars() will take care of calling the resize callback if necessary.
-    // - If you know your edits are not going to resize the underlying buffer allocation, you may modify the contents of 'Buf[]' directly. You need to update 'BufTextLen' accordingly (0 <= BufTextLen < BufSize) and set 'BufDirty'' to true so InputText can update its internal state.
+    // - If you know your edits are not going to resize the underlying buffer allocation, you may modify the contents of 'im_buf[]' directly. You need to update 'BufTextLen' accordingly (0 <= BufTextLen < BufSize) and set 'BufDirty'' to true so InputText can update its internal state.
     ImWchar             EventChar;      // Character input                      // Read-write   // [CharFilter] Replace character with another one, or set to zero to drop. return 1 is equivalent to setting EventChar=0;
     ImGuiKey            EventKey;       // Key pressed (Up/Down/TAB)            // Read-only    // [Completion,History]
-    char*               Buf;            // Text buffer                          // Read-write   // [Resize] Can replace pointer / [Completion,History,Always] Only write to pointed data, don't replace the actual pointer!
+    char*               im_buf;            // Text buffer                          // Read-write   // [Resize] Can replace pointer / [Completion,History,Always] Only write to pointed data, don't replace the actual pointer!
     int                 BufTextLen;     // Text length (in bytes)               // Read-write   // [Resize,Completion,History,Always] Exclude zero-terminator storage. In C land: == strlen(some_text), in C++ land: string.length()
     int                 BufSize;        // Buffer size (in bytes) = capacity+1  // Read-only    // [Resize,Completion,History,Always] Include zero-terminator storage. In C land == ARRAYSIZE(my_char_array), in C++ land: string.capacity()+1
-    bool                BufDirty;       // Set if you modify Buf/BufTextLen!    // Write        // [Completion,History,Always]
+    bool                BufDirty;       // Set if you modify im_buf/BufTextLen!    // Write        // [Completion,History,Always]
     int                 CursorPos;      //                                      // Read-write   // [Completion,History,Always]
     int                 SelectionStart; //                                      // Read-write   // [Completion,History,Always] == to SelectionEnd when no selection)
     int                 SelectionEnd;   //                                      // Read-write   // [Completion,History,Always]
@@ -1639,18 +1639,18 @@ struct ImGuiTextFilter
 // (this could be called 'ImGuiTextBuilder' / 'ImGuiStringBuilder')
 struct ImGuiTextBuffer
 {
-    ImVector<char>      Buf;
+    ImVector<char>      im_buf;
     IMGUI_API static char EmptyString[1];
 
     ImGuiTextBuffer()   { }
-    inline char         operator[](int i) const { IM_ASSERT(Buf.Data != NULL); return Buf.Data[i]; }
-    const char*         begin() const           { return Buf.Data ? &Buf.front() : EmptyString; }
-    const char*         end() const             { return Buf.Data ? &Buf.back() : EmptyString; }   // Buf is zero-terminated, so end() will point on the zero-terminator
-    int                 size() const            { return Buf.Size ? Buf.Size - 1 : 0; }
-    bool                empty() const           { return Buf.Size <= 1; }
-    void                clear()                 { Buf.clear(); }
-    void                reserve(int capacity)   { Buf.reserve(capacity); }
-    const char*         c_str() const           { return Buf.Data ? Buf.Data : EmptyString; }
+    inline char         operator[](int i) const { IM_ASSERT(im_buf.Data != NULL); return im_buf.Data[i]; }
+    const char*         begin() const           { return im_buf.Data ? &im_buf.front() : EmptyString; }
+    const char*         end() const             { return im_buf.Data ? &im_buf.back() : EmptyString; }   // im_buf is zero-terminated, so end() will point on the zero-terminator
+    int                 size() const            { return im_buf.Size ? im_buf.Size - 1 : 0; }
+    bool                empty() const           { return im_buf.Size <= 1; }
+    void                clear()                 { im_buf.clear(); }
+    void                reserve(int capacity)   { im_buf.reserve(capacity); }
+    const char*         c_str() const           { return im_buf.Data ? im_buf.Data : EmptyString; }
     IMGUI_API void      append(const char* str, const char* str_end = NULL);
     IMGUI_API void      appendf(const char* fmt, ...) IM_FMTARGS(2);
     IMGUI_API void      appendfv(const char* fmt, va_list args) IM_FMTLIST(2);

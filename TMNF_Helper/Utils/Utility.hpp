@@ -25,16 +25,18 @@ namespace TrackManiaTM {
 		const string GetModuleName(const HMODULE);
 		const string GetModuleNameExtension(const HMODULE);
 		std::tuple<std::vector<uint8_t>, string, string>  ReadFile(string, int);
-		bool WriteFile(string, binary_t,int);
+		bool WriteFile(string, binary_t, int);
 		bool RemoveFile(const string&);
 		bool WriteMemory(LPVOID, binary_t&);
 		bool StrCaseCompare(const string&, const string&);
-		size_t Find(string& data,string& search, size_t pos=0);
+		size_t Find(string& data, string& search, size_t pos = 0);
 		bool IsAsciiStr(const string&);
-		void Tokenize(string&,char,vector<string>&);
+		void Tokenize(string&, char, vector<string>&);
 		void Replace(string& str, const string& from, const string& to);
 		int ShellExec(string shell_cmd);
 		string Trim(const string& str, const string& whitespace = " ");
+		std::string Slice(const std::string& str, std::string& start_str, std::string& end_str);
+		std::string Slice(const std::string& str, size_t start_pos, size_t end_pos);
 		string GetAppdataPath();
 		bool IsStringEmpty(const string& str);
 

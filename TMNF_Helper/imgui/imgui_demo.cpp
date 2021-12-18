@@ -1047,9 +1047,9 @@ static void ShowDemoWindowWidgets()
                     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
                     {
                         ImVector<char>* my_str = (ImVector<char>*)data->UserData;
-                        IM_ASSERT(my_str->begin() == data->Buf);
+                        IM_ASSERT(my_str->begin() == data->im_buf);
                         my_str->resize(data->BufSize);  // NB: On resizing calls, generally data->BufSize == data->BufTextLen + 1
-                        data->Buf = my_str->begin();
+                        data->im_buf = my_str->begin();
                     }
                     return 0;
                 }
@@ -3262,10 +3262,10 @@ void ImGui::ShowStyleEditor(ImGuiStyle* ref)
     static ImGuiStyle ref_saved_style;
 
     // Default to using internal storage as reference
-    static bool init = true;
-    if (init && ref == NULL)
+    static bool initImGui = true;
+    if (initImGui && ref == NULL)
         ref_saved_style = style;
-    init = false;
+    initImGui = false;
     if (ref == NULL)
         ref = &ref_saved_style;
 
@@ -3614,8 +3614,8 @@ struct ExampleAppConsole
     ImVector<const char*> Commands;
     ImVector<char*>       History;
     int                   HistoryPos;    // -1: new line, 0..History.Size-1 browsing history.
-    ImGuiTextFilter       Filter;
-    bool                  AutoScroll;
+    ImGuiTextFilter       im_filter;
+    bool                  im_auto_scroll;
     bool                  ScrollToBottom;
 
     ExampleAppConsole()
@@ -3627,7 +3627,7 @@ struct ExampleAppConsole
         Commands.push_back("HISTORY");
         Commands.push_back("CLEAR");
         Commands.push_back("CLASSIFY");  // "classify" is only here to provide an example of "C"+[tab] completing to "CL" and displaying matches.
-        AutoScroll = true;
+        im_auto_scroll = true;
         ScrollToBottom = false;
         AddLog("Welcome to Dear ImGui!");
     }
@@ -3697,15 +3697,15 @@ struct ExampleAppConsole
         // Options menu
         if (ImGui::BeginPopup("Options"))
         {
-            ImGui::Checkbox("Auto-scroll", &AutoScroll);
+            ImGui::Checkbox("Auto-scroll", &im_auto_scroll);
             ImGui::EndPopup();
         }
 
-        // Options, Filter
+        // Options, im_filter
         if (ImGui::Button("Options"))
             ImGui::OpenPopup("Options");
         ImGui::SameLine();
-        Filter.Draw("Filter (\"incl,-excl\") (\"error\")", 180);
+        im_filter.Draw("Filter (\"incl,-excl\") (\"error\")", 180);
         ImGui::Separator();
 
         const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing(); // 1 separator, 1 input text
@@ -3733,7 +3733,7 @@ struct ExampleAppConsole
         for (int i = 0; i < Items.Size; i++)
         {
             const char* item = Items[i];
-            if (!Filter.PassFilter(item))
+            if (!im_filter.PassFilter(item))
                 continue;
 
             // Normally you would store more information in your item (e.g. make Items[] an array of structure, store color/type etc.)
@@ -3747,7 +3747,7 @@ struct ExampleAppConsole
         if (copy_to_clipboard)
             ImGui::LogFinish();
 
-        if (ScrollToBottom || (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
+        if (ScrollToBottom || (im_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
             ImGui::SetScrollHereY(1.0f);
         ScrollToBottom = false;
 
@@ -3812,7 +3812,7 @@ struct ExampleAppConsole
             AddLog("Unknown command: '%s'\n", command_line);
         }
 
-        // On commad input, we scroll to bottom even if AutoScroll==false
+        // On commad input, we scroll to bottom even if im_auto_scroll==false
         ScrollToBottom = true;
     }
 
@@ -3832,9 +3832,9 @@ struct ExampleAppConsole
                 // Example of TEXT COMPLETION
 
                 // Locate beginning of current word
-                const char* word_end = data->Buf + data->CursorPos;
+                const char* word_end = data->im_buf + data->CursorPos;
                 const char* word_start = word_end;
-                while (word_start > data->Buf)
+                while (word_start > data->im_buf)
                 {
                     const char c = word_start[-1];
                     if (c == ' ' || c == '\t' || c == ',' || c == ';')
@@ -3856,7 +3856,7 @@ struct ExampleAppConsole
                 else if (candidates.Size == 1)
                 {
                     // Single match. Delete the beginning of the word and replace it entirely so we've got nice casing
-                    data->DeleteChars((int)(word_start-data->Buf), (int)(word_end-word_start));
+                    data->DeleteChars((int)(word_start-data->im_buf), (int)(word_end-word_start));
                     data->InsertChars(data->CursorPos, candidates[0]);
                     data->InsertChars(data->CursorPos, " ");
                 }
@@ -3880,7 +3880,7 @@ struct ExampleAppConsole
 
                     if (match_len > 0)
                     {
-                        data->DeleteChars((int)(word_start - data->Buf), (int)(word_end-word_start));
+                        data->DeleteChars((int)(word_start - data->im_buf), (int)(word_end-word_start));
                         data->InsertChars(data->CursorPos, candidates[0], candidates[0] + match_len);
                     }
 
@@ -3939,34 +3939,34 @@ static void ShowExampleAppConsole(bool* p_open)
 //  my_log.Draw("title");
 struct ExampleAppLog
 {
-    ImGuiTextBuffer     Buf;
-    ImGuiTextFilter     Filter;
-    ImVector<int>       LineOffsets;        // Index to lines offset. We maintain this with AddLog() calls, allowing us to have a random access on lines
-    bool                AutoScroll;     // Keep scrolling if already at the bottom
+    ImGuiTextBuffer     im_buf;
+    ImGuiTextFilter     im_filter;
+    ImVector<int>       im_lineOffsets;        // Index to lines offset. We maintain this with AddLog() calls, allowing us to have a random access on lines
+    bool                im_auto_scroll;     // Keep scrolling if already at the bottom
 
     ExampleAppLog()
     {
-        AutoScroll = true;
+        im_auto_scroll = true;
         Clear();
     }
 
     void    Clear()
     {
-        Buf.clear();
-        LineOffsets.clear();
-        LineOffsets.push_back(0);
+        im_buf.clear();
+        im_lineOffsets.clear();
+        im_lineOffsets.push_back(0);
     }
 
     void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
     {
-        int old_size = Buf.size();
+        int old_size = im_buf.size();
         va_list args;
         va_start(args, fmt);
-        Buf.appendfv(fmt, args);
+        im_buf.appendfv(fmt, args);
         va_end(args);
-        for (int new_size = Buf.size(); old_size < new_size; old_size++)
-            if (Buf[old_size] == '\n')
-                LineOffsets.push_back(old_size + 1);
+        for (int new_size = im_buf.size(); old_size < new_size; old_size++)
+            if (im_buf[old_size] == '\n')
+                im_lineOffsets.push_back(old_size + 1);
     }
 
     void    Draw(const char* title, bool* p_open = NULL)
@@ -3980,7 +3980,7 @@ struct ExampleAppLog
         // Options menu
         if (ImGui::BeginPopup("Options"))
         {
-            ImGui::Checkbox("Auto-scroll", &AutoScroll);
+            ImGui::Checkbox("Auto-scroll", &im_auto_scroll);
             ImGui::EndPopup();
         }
 
@@ -3992,7 +3992,7 @@ struct ExampleAppLog
         ImGui::SameLine();
         bool copy = ImGui::Button("Copy");
         ImGui::SameLine();
-        Filter.Draw("Filter", -100.0f);
+        im_filter.Draw("Filter", -100.0f);
 
         ImGui::Separator();
         ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -4003,19 +4003,19 @@ struct ExampleAppLog
             ImGui::LogToClipboard();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-        const char* buf = Buf.begin();
-        const char* buf_end = Buf.end();
-        if (Filter.IsActive())
+        const char* buf = im_buf.begin();
+        const char* buf_end = im_buf.end();
+        if (im_filter.IsActive())
         {
-            // In this example we don't use the clipper when Filter is enabled.
+            // In this example we don't use the clipper when im_filter is enabled.
             // This is because we don't have a random access on the result on our filter.
             // A real application processing logs with ten of thousands of entries may want to store the result of search/filter.
             // especially if the filtering function is not trivial (e.g. reg-exp).
-            for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
+            for (int line_no = 0; line_no < im_lineOffsets.Size; line_no++)
             {
-                const char* line_start = buf + LineOffsets[line_no];
-                const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
-                if (Filter.PassFilter(line_start, line_end))
+                const char* line_start = buf + im_lineOffsets[line_no];
+                const char* line_end = (line_no + 1 < im_lineOffsets.Size) ? (buf + im_lineOffsets[line_no + 1] - 1) : buf_end;
+                if (im_filter.PassFilter(line_start, line_end))
                     ImGui::TextUnformatted(line_start, line_end);
             }
         }
@@ -4031,13 +4031,13 @@ struct ExampleAppLog
             // When using the filter (in the block of code above) we don't have random access into the data to display anymore, which is why we don't use the clipper.
             // Storing or skimming through the search result would make it possible (and would be recommended if you want to search through tens of thousands of entries)
             ImGuiListClipper clipper;
-            clipper.Begin(LineOffsets.Size);
+            clipper.Begin(im_lineOffsets.Size);
             while (clipper.Step())
             {
                 for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                 {
-                    const char* line_start = buf + LineOffsets[line_no];
-                    const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                    const char* line_start = buf + im_lineOffsets[line_no];
+                    const char* line_end = (line_no + 1 < im_lineOffsets.Size) ? (buf + im_lineOffsets[line_no + 1] - 1) : buf_end;
                     ImGui::TextUnformatted(line_start, line_end);
                 }
             }
@@ -4045,7 +4045,7 @@ struct ExampleAppLog
         }
         ImGui::PopStyleVar();
 
-        if (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+        if (im_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
 
         ImGui::EndChild();
